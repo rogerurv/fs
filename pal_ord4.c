@@ -2,13 +2,13 @@
 
 
 /************************************************************************/
-/*				pal_ord3.c				*/
+/*				pal_ord4.c				*/
 /*									*/
 /*   Compilar:								*/
-/*      gcc -Wall pal_ord3.c memoria.o winsuport2.o -o pal_ord3 -lcurses	*/
+/*      gcc  pal_ord4.c memoria.o winsuport2.o semafor.o missatge.o-o pal_ord3 -lcurses -lpthread	*/
 /*									*/
 /*	Aquest programa s'executara com un proces fill del programa	*/
-/*	'tennis3' (veure fitxer 'tennis3.c').			*/
+/*	'tennis4' (veure fitxer 'tennis4.c').			*/
 /************************************************************************/
 
 
@@ -22,7 +22,8 @@
 #include "memoria.h"
 #include "winsuport2.h"
 #include <pthread.h>
-
+#include "missatge.h"
+#include "semafor.h"
 	
 	
 int main(int n_args, char *ll_args[])
@@ -60,9 +61,7 @@ int main(int n_args, char *ll_args[])
 	id_busties= atoi(ll_args[16]);
 	busties = map_mem(id_busties);	/* obtenir adres. de mem. compartida */
 	
-	waitS(id_sem);
-	win_set(p_win,n_fil,n_col);	/* crea acces a finestra oberta pel proces pare */
-	signalS(id_sem);
+	
 	
 	
 	/* moviments,retard,tecla,cont,MAX_MOV,index,l_pal*/
@@ -91,7 +90,9 @@ int main(int n_args, char *ll_args[])
 	po_pf=aux1/100;
 	v_pal=aux2/100;
 	
-	
+	waitS(id_sem);
+	win_set(p_win,n_fil,n_col);	/* crea acces a finestra oberta pel proces pare */
+	signalS(id_sem);
 	
 	int f_h;
 	
@@ -99,8 +100,9 @@ int main(int n_args, char *ll_args[])
 	int i= index; 
 	int j=i+1;
 	char c = j +'0';
-	
-	
+	char pal;
+	int c_h;
+	int bustia_desti;
 	
 	sprintf(missatge,"%c",'c');
 	sendM(busties[index+1],missatge,1);
@@ -109,28 +111,55 @@ int main(int n_args, char *ll_args[])
 	
 do{
   j=0;
-  receiveM(busties[index+1],ord);
+  i=0;
+  pal=' ';
+  receiveM(busties[index],ord);
   sscanf(ord,"%c",&mis);
-
+  
+  
+  
   if(mis=='x'){			/* si pilota ha xocat amb paleta d'ordinador */
-	  waitS(id_sem);
-	  if (win_quincar(f_h+l_pal-1,ipo_pc+1) != ' ') {  /* si no hi ha obstacle */
-	   signalS(id_sem);	
-		if(ipo_pc+1==n_col){
-		  waitS(id_sem);
-		  win_escricar((ipo_pf+j), ipo_pc,' ',NO_INV);      /* esborra paleta ordinador */
-		  signalS(id_sem);
-		  exit(0);
-	  }
+			
+		if(ipo_pc+2==n_col){
+			waitS(id_sem);
+			while(i<=l_pal){										/* si arriba al final eliminem paleta*/
+				win_escricar(ipo_pf+i-1,ipo_pc,' ',NO_INV);
+				i=i+1;
+				
+				}
+			signalS(id_sem);
+			ipo_pc=n_col+1;			
+						  }
+		
 		else{
-			sprintf(missatge,"%c",'x');
-			sendM(busties[index+1],missatge,1);
+			c_h = ipo_pc + v_pal;
+			
+				waitS(id_sem);
+				pal=win_quincar(ipo_pf,c_h);	/* mirem que hi ha a continuacio de la paleta a totes les files*/
+				signalS(id_sem);
+				
+			
+			
+			if(pal==' ' ){		/* si no hi ha res i no ha arribat al final */
+				i=0;
+				waitS(id_sem);
+				while(i<=l_pal){									/* si no hi ha un altre paleta a continuacio */
+					win_escricar(ipo_pf+i-1,ipo_pc,' ',NO_INV);		/* esborrem posicio actual */
+					i=i+1;
+								}
+				signalS(id_sem);				
+				ipo_pc=ipo_pc+1;					/* movem la paleta a la dreta */
+						}
+			else{
+				
+				sprintf(missatge,"%c",'c');
+				bustia_desti=pal-'0';	/*calculem a quina bustia ho hem d'enviar*/
+				sendM(busties[bustia_desti-1],missatge,1);
+				}  
 			}
 		}
-		else{	
-	  ipo_pc=ipo_pc+1;
-  }}
-  
+	  
+  else{
   f_h = po_pf + v_pal;		/* posicio hipotetica de la paleta */
  
   if (f_h != ipo_pf)	/* si pos. hipotetica no coincideix amb pos. actual */
@@ -184,7 +213,7 @@ do{
   sendM(busties[index+1],missatge,1);
   
   win_retard(retard);
-  
+}  
 	 } while (*p_tecla != TEC_RETURN && (*p_cont==-1) && *p_moviments<MAX_MOV);
 
 return(0);

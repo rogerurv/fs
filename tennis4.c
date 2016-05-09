@@ -60,6 +60,8 @@
 #include "memoria.h"
 #include "winsuport2.h"
 #include <pthread.h>
+#include "missatge.h"
+#include "semafor.h"
 
 
 #define MIN_FIL 7		/* definir limits de variables globals */
@@ -286,15 +288,18 @@ void * moure_pilota(void * cap)
 {
   
   char missatge[1];
-  
+ 
   	
   int f_h, c_h;
   char rh,rv,rd;
-
+  int bustia_desti;
+  
   sprintf(missatge,"%c",'c'); /*'c' indica que està tot correcte.*/
   sendM(busties[0],missatge,1);
-
+  
 do{
+  
+  
 	
   f_h = pil_pf + pil_vf;		/* posicio hipotetica de la pilota */
   c_h = pil_pc + pil_vc;
@@ -311,12 +316,18 @@ do{
 	if (rv != ' ')			/* si no hi ha res */
 	{   pil_vf = -pil_vf;		/* canvia velocitat vertical */
 	    f_h = pil_pf+pil_vf;	/* actualitza posicio hipotetica */
-	}
-	else{
-		sprintf(missatge,"%c",'x');
-		sendM(busties[rv],missatge,1);
+		
+		if(rv!='+' && rv!='0'){		/* ha xocat amb alguna paleta */
+			sprintf(missatge,"%c",'x');
+			bustia_desti=rv-'0';	/*calculem a quina bustia ho hem d'enviar*/
+			sendM(busties[bustia_desti-1],missatge,1);
+			
+			
+			
+	}}
+	
     }
-    }
+    
     if (c_h != ipil_pc)		/* provar rebot horitzontal */
     {	
 		waitS(id_sem);
@@ -326,11 +337,15 @@ do{
 	if (rh != ' ')			/* si no hi ha res */
 	{    pil_vc = -pil_vc;		/* canvia velocitat horitzontal */
 	     c_h = pil_pc+pil_vc;	/* actualitza posicio hipotetica */
-	}
-	else{
-		sprintf(missatge,"%c",'x');
-		sendM(busties[rh],missatge,1);
-    }
+		
+		 if(rh!='+' && rh!='0'){	/* ha xocat amb alguna paleta de pc*/
+			sprintf(missatge,"%c",'x');
+			bustia_desti=rh-'0';	/*calculem a quina bustia ho hem d'enviar*/
+			sendM(busties[bustia_desti-1],missatge,1);
+			
+			
+	}}
+	
     }
     if ((f_h != ipil_pf) && (c_h != ipil_pc))	/* provar rebot diagonal */
 		
@@ -343,11 +358,15 @@ do{
 	{    pil_vf = -pil_vf; pil_vc = -pil_vc;	/* canvia velocitats */
 	     f_h = pil_pf+pil_vf;
 	     c_h = pil_pc+pil_vc;		/* actualitza posicio entera */
-	}
-	else{
-		sprintf(missatge,"%c",'x');
-		sendM(busties[rd],missatge,1);
-    }
+		 
+		 
+		 if(rd!='+' && rd!='0'){	/* ha xocat amb alguna paleta */
+			sprintf(missatge,"%c",'x');
+			bustia_desti=rd-'0';	/*calculem a quina bustia ho hem d'enviar*/
+			sendM(busties[bustia_desti-1],missatge,1);	
+			
+	}}
+	
     } 
     waitS(id_sem);
     if (win_quincar(f_h,c_h) == ' ')	/* verificar posicio definitiva */
@@ -375,6 +394,9 @@ do{
   else { 
 	  
 	  pil_pf += pil_vf; pil_pc += pil_vc; }
+	  
+  sprintf(missatge,"%c",'c'); /*'c' indica que està tot correcte.*/
+  sendM(busties[0],missatge,1);
   
   win_retard(retard);
   
@@ -502,8 +524,8 @@ int main(int n_args, const char *ll_args[])
 		sprintf(a13,"%f",(aux1));
 		sprintf(a14,"%f",(aux2));
 		
-		execlp("./pal_ord3", "pal_ord3", a1, a2, a3, a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,(char *)0);
-		fprintf(stderr,"error: no puc executar el process fill \'pal_ord3\'\n");
+		execlp("./pal_ord4", "pal_ord4", a1, a2, a3, a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,(char *)0);
+		fprintf(stderr,"error: no puc executar el process fill \'pal_ord4\'\n");
 		exit(0);
 		n++;
     }
