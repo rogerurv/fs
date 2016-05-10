@@ -120,7 +120,7 @@ do{
   
   if(mis=='x'){			/* si pilota ha xocat amb paleta d'ordinador */
 			
-		if(ipo_pc+2==n_col){
+		if(ipo_pc+1==n_col-1){
 			waitS(id_sem);
 			while(i<=l_pal){										/* si arriba al final eliminem paleta*/
 				win_escricar(ipo_pf+i-1,ipo_pc,' ',NO_INV);
@@ -152,7 +152,7 @@ do{
 						}
 			else{
 				
-				sprintf(missatge,"%c",'c');
+				sprintf(missatge,"%c",'x');
 				bustia_desti=pal-'0';	/*calculem a quina bustia ho hem d'enviar*/
 				sendM(busties[bustia_desti-1],missatge,1);
 				}  
