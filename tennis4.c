@@ -1,6 +1,6 @@
 /*****************************************************************************/
 /*									     */
-/*				     Tennis0.c				     */
+/*				     Tennis4.c				     */
 /*									     */
 /*  Programa inicial d'exemple per a les practiques 2 i 3 de ISO.	     */
 /*     Es tracta del joc del tennis: es dibuixa un camp de joc rectangular    */
@@ -38,8 +38,8 @@
 /*     la pantalla (basada en CURSES); per tant, el programa necessita ser   */
 /*     compilat amb la llibreria 'curses':				     */
 /*									     */
-/*	   $ gcc tennis0.c winsuport.o -o tennis0 -lcurses		     */
-/*	   $ tennis0 fit_param [retard]					     */
+/*	   $ gcc tennis4.c winsuport2.o semafor.o missatge.o memoria.o -o tennis4 -lcurses -lpthread  */
+/*	   $ tennis4 fit_param [max_mov] [retard]					     */
 /*									     */
 /*  Codis de retorn:						  	     */
 /*     El programa retorna algun dels seguents codis al SO:		     */
@@ -53,16 +53,17 @@
 /*****************************************************************************/
 
 
-
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "memoria.h"
 #include "winsuport2.h"
 #include <pthread.h>
 #include "missatge.h"
 #include "semafor.h"
-
+#include "memoria.h"
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define MIN_FIL 7		/* definir limits de variables globals */
 #define MAX_FIL 25
@@ -72,7 +73,7 @@
 #define MIN_VEL -1.0
 #define MAX_VEL 1.0
 #define MAX_PROCS 10
-
+#define MAX_THREADS 2
 
 
 /* variables globals */
@@ -94,7 +95,7 @@ int MAX_MOV=100;		/* maxim nombre de moviments de paleta */
 int n_proc=0;
 
 pid_t taula[MAX_PROCS];		/* taula d'identificadors dels processos fill */
-
+pthread_t threads[MAX_THREADS];	
 
 
 typedef struct{
@@ -299,8 +300,6 @@ void * moure_pilota(void * cap)
   
 do{
   
-  
-	
   f_h = pil_pf + pil_vf;		/* posicio hipotetica de la pilota */
   c_h = pil_pc + pil_vc;
   *p_cont = -1;		/* inicialment suposem que la pilota no surt */
@@ -318,7 +317,11 @@ do{
 	    f_h = pil_pf+pil_vf;	/* actualitza posicio hipotetica */
 		
 		if(rv!='+' && rv!='0'){		/* ha xocat amb alguna paleta */
-			sprintf(missatge,"%c",'x');
+			if(pil_vf>=0){
+				sprintf(missatge,"%c",'e');}
+			else{
+				sprintf(missatge,"%c",'d');}
+				
 			bustia_desti=rv-'0';	/*calculem a quina bustia ho hem d'enviar*/
 			sendM(busties[bustia_desti-1],missatge,1);
 			
@@ -339,7 +342,11 @@ do{
 	     c_h = pil_pc+pil_vc;	/* actualitza posicio hipotetica */
 		
 		 if(rh!='+' && rh!='0'){	/* ha xocat amb alguna paleta de pc*/
-			sprintf(missatge,"%c",'x');
+			if(pil_vc>=0){
+				sprintf(missatge,"%c",'e');}
+			else{
+				sprintf(missatge,"%c",'d');}
+				
 			bustia_desti=rh-'0';	/*calculem a quina bustia ho hem d'enviar*/
 			sendM(busties[bustia_desti-1],missatge,1);
 			
@@ -361,7 +368,11 @@ do{
 		 
 		 
 		 if(rd!='+' && rd!='0'){	/* ha xocat amb alguna paleta */
-			sprintf(missatge,"%c",'x');
+			if(pil_vc>=0){
+				sprintf(missatge,"%c",'e');}
+			else{
+				sprintf(missatge,"%c",'d');}
+				
 			bustia_desti=rd-'0';	/*calculem a quina bustia ho hem d'enviar*/
 			sendM(busties[bustia_desti-1],missatge,1);	
 			
@@ -469,13 +480,13 @@ void * mou_paleta_usuari(void * cap)
 int main(int n_args, const char *ll_args[])
 {
 	
-  pthread_t threads;	
+  char strin[30];
  
   float aux1,aux2;	
-  int i,n;
+  int i,n,t;
   
   if ((n_args != 3) && (n_args !=4))
-  {	fprintf(stderr,"Comanda: tennis0 fit_param max_mov [retard]\n");
+  {	fprintf(stderr,"Comanda: tennis4 fit_param [max_mov] [retard]\n");
   	exit(1);
   }
   carrega_parametres(ll_args[1]);
@@ -533,21 +544,38 @@ int main(int n_args, const char *ll_args[])
   }
   
    
-  pthread_create(&threads,NULL,moure_pilota,(void *)NULL);
-  pthread_create(&threads,NULL,mou_paleta_usuari,(void *)NULL);
+  pthread_create(&threads[0],NULL,moure_pilota,(void *)NULL);
+  pthread_create(&threads[1],NULL,mou_paleta_usuari,(void *)NULL);
+  
+  int u_segon,d_segon,minuts,q;
   
   
   do				/********** bucle principal del joc **********/
   {	
-	  waitS(id_sem);	
-	  win_update();
-	  signalS(id_sem);
-	  win_retard(retard);
+	 
+	q=(int)clock()/CLOCKS_PER_SEC;	
+	u_segon=(q%60)%10;	
+	d_segon=(q%60)/10;
+	minuts=(q/600);
+	waitS(id_sem);
+	win_update();
+	sprintf(strin,"Temps: %c%c:%c%c   Moviments: %d   Retard:  %d",'0','0'+minuts,'0'+d_segon,'0'+u_segon, *p_moviments,retard); 
+	win_escristr(strin);	
+	signalS(id_sem);
+	//win_retard(retard);
 	  
 	  
   } while ((*p_tecla != TEC_RETURN) && (*p_cont==-1) && *p_moviments<MAX_MOV);
   
   
+  for(i=0;i<MAX_THREADS;i++){
+		pthread_join(threads[i], (void **)&t); /* Esperem a que el fil d'execució de l'usuari acabi.*/
+	}
+	
+	
+  for(i=0;i<n;i++){	/* Esperem a que acabin els processos fills */
+		waitpid(taula[i],&t,0);
+	}
 
 	
   win_fi(); 

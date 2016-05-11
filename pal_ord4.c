@@ -103,36 +103,40 @@ int main(int n_args, char *ll_args[])
 	char pal;
 	int c_h;
 	int bustia_desti;
-	
+	int mort=0;
 	sprintf(missatge,"%c",'c');
 	sendM(busties[index+1],missatge,1);
 	
 	
 	
 do{
-  j=0;
-  i=0;
-  pal=' ';
-  receiveM(busties[index],ord);
-  sscanf(ord,"%c",&mis);
+	j=0;
+	i=0;
+	pal=' ';
+ 
+	receiveM(busties[index],ord);
+	sscanf(ord,"%c",&mis);
   
   
+	if(mort==0){
+	 
   
-  if(mis=='x'){			/* si pilota ha xocat amb paleta d'ordinador */
+		if(mis=='e' || mis=='d'){			/* si pilota ha xocat amb paleta d'ordinador */
 			
-		if(ipo_pc+1==n_col-1){
-			waitS(id_sem);
-			while(i<=l_pal){										/* si arriba al final eliminem paleta*/
-				win_escricar(ipo_pf+i-1,ipo_pc,' ',NO_INV);
-				i=i+1;
-				
-				}
-			signalS(id_sem);
-			ipo_pc=n_col+1;			
-						  }
+			if(ipo_pc+1==n_col-1){
+				waitS(id_sem);
+				while(i<=l_pal){										/* si arriba al final eliminem paleta*/
+					
+					win_escricar(ipo_pf+i-1,ipo_pc,' ',NO_INV);
+					i=i+1;
+					
+							   }
+				signalS(id_sem);
+				mort=1;
+						   }
 		
-		else{
-			c_h = ipo_pc + v_pal;
+			else{
+				c_h = ipo_pc + v_pal;
 			
 				waitS(id_sem);
 				pal=win_quincar(ipo_pf,c_h);	/* mirem que hi ha a continuacio de la paleta a totes les files*/
@@ -140,19 +144,46 @@ do{
 				
 			
 			
-			if(pal==' ' ){		/* si no hi ha res i no ha arribat al final */
-				i=0;
-				waitS(id_sem);
-				while(i<=l_pal){									/* si no hi ha un altre paleta a continuacio */
-					win_escricar(ipo_pf+i-1,ipo_pc,' ',NO_INV);		/* esborrem posicio actual */
-					i=i+1;
+				if(pal==' ' ){		/* si no hi ha res i no ha arribat al final */
+					i=1;
+					
+					waitS(id_sem);
+					while(i<=l_pal){
+						if(mis=='d'){    /* si rebot dret*/
+							win_escricar(ipo_pf+i-1,ipo_pc,' ',NO_INV);		/* esborrem posicio actual */
+							signalS(id_sem);
+							if(i<l_pal){
+								waitS(id_sem);
+								win_escricar(ipo_pf+i, ipo_pc+1,c,INVERS);	/* escribim a nova posicio */
+								
+							}
+							i=i+1;
 								}
-				signalS(id_sem);				
-				ipo_pc=ipo_pc+1;					/* movem la paleta a la dreta */
+					signalS(id_sem);			
+						if(mis=='e'){
+							waitS(id_sem);									/* si no hi ha un altre paleta a continuacio */
+							win_escricar(ipo_pf+i-1,ipo_pc,' ',NO_INV);		/* esborrem posicio actual */
+							signalS(id_sem);
+								if(i<l_pal){
+									waitS(id_sem);
+									win_escricar(ipo_pf+i, ipo_pc-1,c,INVERS);}
+									signalS(id_sem);
+									i=i+1;
+										}
+						
+							}			
+								
+				if(mis=='d'){
+					ipo_pc=ipo_pc+1;}
+				if(mis=='e'){
+					ipo_pc=ipo_pc-1;}
 						}
 			else{
+				if(mis=='d'){
+					sprintf(missatge,"%c",'d');}
+				if(mis=='e'){
+					sprintf(missatge,"%c",'e');}
 				
-				sprintf(missatge,"%c",'x');
 				bustia_desti=pal-'0';	/*calculem a quina bustia ho hem d'enviar*/
 				sendM(busties[bustia_desti-1],missatge,1);
 				}  
@@ -208,12 +239,13 @@ do{
   else 
   
   po_pf += v_pal; 	/* actualitza posicio vertical real de la paleta */
-  
+}
+}
   sprintf(missatge,"%c",'c');
   sendM(busties[index+1],missatge,1);
   
   win_retard(retard);
-}  
+
 	 } while (*p_tecla != TEC_RETURN && (*p_cont==-1) && *p_moviments<MAX_MOV);
 
 return(0);
